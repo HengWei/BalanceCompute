@@ -137,6 +137,7 @@
             this.textBox3.Name = "textBox3";
             this.textBox3.Size = new System.Drawing.Size(423, 258);
             this.textBox3.TabIndex = 7;
+            this.textBox3.Text = "餘額檔Sheet檔名為\"昨日日期\" ex:1030\r\n\r\n頂新檔Sheet檔名為\"第 1 頁\"";
             // 
             // button3
             // 

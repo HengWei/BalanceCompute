@@ -84,7 +84,7 @@ namespace BalanceCompute
 
             using (var wb = new XLWorkbook(filePath))
             {
-                var ws = wb.Worksheet(2);
+                var ws = wb.Worksheet("第 1 頁");
 
                 var lastRow = ws.LastRowUsed().RowNumber();
 
@@ -138,7 +138,7 @@ namespace BalanceCompute
 
                 if(ws==null)
                 {
-                    message = "昨日餘額檔，Sheet檔名請改為昨日日期格式如: 1030";
+                    message = "昨日餘額檔異常，Sheet檔名請改為昨日日期格式如: 1030";
                     return data; 
                 }
 
@@ -171,7 +171,7 @@ namespace BalanceCompute
 
         private static string ExportResult(IEnumerable<BalanceData> _Balance, IEnumerable<SystemData> _System, DateTime date)
         {
-            string fileName = AppDomain.CurrentDomain.BaseDirectory + "result.xlsx";
+            string fileName = AppDomain.CurrentDomain.BaseDirectory + String.Format("{0}.xlsx", date.ToString("MMdd"));
 
             using (var wb = new XLWorkbook())
             {
@@ -195,17 +195,34 @@ namespace BalanceCompute
 
                     j = 1;
 
-                    ws.Cell(++i, j++).SetValue(item.Store);
+                    ws.Cell(++i, j).SetValue(item.Store);
 
-                    ws.Cell(i, j++).SetValue(item.LastBalance);
-                    ws.Cell(i, j).Style.NumberFormat.Format = "#,##0.00";
+                    ws.Cell(i, ++j).SetValue(item.LastBalance);
+                    ws.Cell(i, j).Style.NumberFormat.Format = "#,##0";
 
-                    ws.Cell(i, j++).SetValue(item.Cash);
-                    ws.Cell(i, j).Style.NumberFormat.Format = "#,##0.00";
+                    ws.Cell(i, ++j).SetValue(item.Cash);
+                    ws.Cell(i, j).Style.NumberFormat.Format = "#,##0";
 
-                    ws.Cell(i, j++).SetValue(item.NowBalance);
-                    ws.Cell(i, j).Style.NumberFormat.Format = "#,##0.00";
+                    ws.Cell(i, ++j).SetValue(item.NowBalance);
+                    ws.Cell(i, j).Style.NumberFormat.Format = "#,##0";
                 }
+
+
+                j = 1;
+                ws.Cell(++i, j).SetValue("合計");
+                ws.Range(i,1,i,4).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+
+                ws.Cell(i, ++j).SetValue(_Balance.Sum(x=>x.LastBalance));
+                ws.Cell(i, j).Style.NumberFormat.Format = "#,##0";
+
+                ws.Cell(i, ++j).SetValue(_Balance.Sum(x => x.Cash));
+                ws.Cell(i, j).Style.NumberFormat.Format = "#,##0";
+
+                ws.Cell(i, ++j).SetValue(_Balance.Sum(x => x.NowBalance));
+                ws.Cell(i, j).Style.NumberFormat.Format = "#,##0";
+
+
+                ws.Columns().AdjustToContents();
 
                 wb.SaveAs(fileName);
             }
