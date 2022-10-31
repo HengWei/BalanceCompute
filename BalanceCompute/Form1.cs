@@ -2,11 +2,15 @@ using ClosedXML.Excel;
 
 namespace BalanceCompute
 {
+
+    
+
     public partial class Form1 : Form
     {
         public Form1()
         {
             InitializeComponent();
+            
         }
 
         private void label1_Click(object sender, EventArgs e)
@@ -48,18 +52,34 @@ namespace BalanceCompute
 
         private void button3_Click(object sender, EventArgs e)
         {
-            var balanceData = LoadBalanceData(textBox1.Text);
+            var systemData = LoadSysytemData(textBox2.Text, out DateTime? date, out string sysytemmessage);
 
-            var systemData = LoadSysytemData(textBox2.Text);
+            if (!string.IsNullOrEmpty(sysytemmessage))
+            {
+                textBox3.Text = textBox3.Text + Environment.NewLine + sysytemmessage;
+                return;
+            }
 
-            var filePath = ExportResult(balanceData, systemData);
+            var balanceData = LoadBalanceData(textBox1.Text, date.Value.ToString("MMdd"), out string balanceMessage);
+
+            if (!string.IsNullOrEmpty(balanceMessage))
+            {
+                textBox3.Text = textBox3.Text + Environment.NewLine + balanceMessage;
+                return;
+            }
+
+            var filePath = ExportResult(balanceData, systemData, date.Value);
 
             textBox3.Text = textBox3.Text + Environment.NewLine + string.Format("產生完成 匯出檔案: {0}", filePath);
         }
 
 
-        private static IEnumerable<SystemData> LoadSysytemData(string filePath)
+        public static IEnumerable<SystemData> LoadSysytemData(string filePath, out DateTime? date, out string message)
         {
+            message = string.Empty;
+
+            date = null;
+
             List<SystemData> data = new List<SystemData>();
 
             using (var wb = new XLWorkbook(filePath))
@@ -86,28 +106,46 @@ namespace BalanceCompute
 
                         temp.Cash = amount;
 
+                        if(!date.HasValue)
+                        {
+                            var dateArray = (ws.Cell(i, 1).Value.ToString()??String.Empty).Split("/");
+
+                            date = new DateTime(int.Parse(dateArray[0])+1911, int.Parse(dateArray[1]), int.Parse(dateArray[2]));
+                        }
+
                         data.Add(temp);
                     }
                 }
             }
 
+            if(data.Count()==0)
+            {
+                message = "頂新資料空白";
+            }
+
             return data;
         }
 
-        private static IEnumerable<BalanceData> LoadBalanceData(string filePath)
+        private static IEnumerable<BalanceData> LoadBalanceData(string filePath, string sheetName, out string message)
         {
             List<BalanceData> data = new List<BalanceData>();
 
+            message = string.Empty;
+
             using (var wb = new XLWorkbook(filePath))
             {
-                var ws = wb.Worksheet(1);
+                var ws = wb.Worksheet(sheetName);
+
+                if(ws==null)
+                {
+                    message = "昨日餘額檔，Sheet檔名請改為昨日日期格式如: 1030";
+                    return data; 
+                }
 
                 var lastRow = ws.LastRowUsed().RowNumber();
 
                 for (int i = 2; i <= lastRow; i++)
                 {
-
-
                     string rowData = ws.Cell(i, 1).Value.ToString() ?? string.Empty;
 
                     BalanceData temp = new BalanceData();
@@ -131,22 +169,22 @@ namespace BalanceCompute
             return data;
         }
 
-        private static string ExportResult(IEnumerable<BalanceData> _Balance, IEnumerable<SystemData> _System)
+        private static string ExportResult(IEnumerable<BalanceData> _Balance, IEnumerable<SystemData> _System, DateTime date)
         {
             string fileName = AppDomain.CurrentDomain.BaseDirectory + "result.xlsx";
 
             using (var wb = new XLWorkbook())
             {
-                var ws = wb.AddWorksheet("1030");
+                var ws = wb.AddWorksheet(date.ToString("MMdd"));
 
                 int i = 1;
 
                 int j = 1;
 
                 ws.Cell(i, j++).SetValue("門市");
-                ws.Cell(i, j++).SetValue("10/29餘額");
-                ws.Cell(i, j++).SetValue("10/30現金收入");             
-                ws.Cell(i, j++).SetValue("10/30餘額");
+                ws.Cell(i, j++).SetValue(string.Format("{0}餘額", date.AddDays(-1).ToString("MM/dd")));
+                ws.Cell(i, j++).SetValue(string.Format("{0}現金收入", date.ToString("MM/dd")));             
+                ws.Cell(i, j++).SetValue(string.Format("{0}餘額", date.ToString("MM/dd")));
 
 
                 foreach (var item in _Balance)
