@@ -60,7 +60,8 @@ namespace BalanceCompute
                 return;
             }
 
-            var balanceData = LoadBalanceData(textBox1.Text, date.Value.ToString("MMdd"), out string balanceMessage);
+            var balanceData = LoadBalanceData(textBox1.Text, out string title, out string balanceMessage);
+            
 
             if (!string.IsNullOrEmpty(balanceMessage))
             {
@@ -68,7 +69,7 @@ namespace BalanceCompute
                 return;
             }
 
-            var filePath = ExportResult(balanceData, systemData, date.Value);
+            var filePath = ExportResult(balanceData, systemData, title, date.Value);
 
             textBox3.Text = textBox3.Text + Environment.NewLine + string.Format("產生完成 匯出檔案: {0}", filePath);
         }
@@ -126,23 +127,35 @@ namespace BalanceCompute
             return data;
         }
 
-        private static IEnumerable<BalanceData> LoadBalanceData(string filePath, string sheetName, out string message)
+        private static IEnumerable<BalanceData> LoadBalanceData(string filePath, out string title, out string message)
         {
             List<BalanceData> data = new List<BalanceData>();
 
             message = string.Empty;
+            title = string.Empty;
 
             using (var wb = new XLWorkbook(filePath))
             {
-                var ws = wb.Worksheet(sheetName);
-
-                if(ws==null)
-                {
-                    message = "昨日餘額檔異常，Sheet檔名請改為昨日日期格式如: 1030";
-                    return data; 
-                }
+                var ws = wb.Worksheet(1);
 
                 var lastRow = ws.LastRowUsed().RowNumber();
+
+                int j = 0;
+
+                while (true)
+                {
+                    var tempTitle = ws.Cell(1, ++j).Value.ToString() ?? string.Empty;
+
+                    if(string.IsNullOrEmpty(tempTitle))
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        title = tempTitle;
+                    }
+                }
+                
 
                 for (int i = 2; i <= lastRow; i++)
                 {
@@ -169,7 +182,7 @@ namespace BalanceCompute
             return data;
         }
 
-        private static string ExportResult(IEnumerable<BalanceData> _Balance, IEnumerable<SystemData> _System, DateTime date)
+        private static string ExportResult(IEnumerable<BalanceData> _Balance, IEnumerable<SystemData> _System, string title, DateTime date)
         {
             string fileName = AppDomain.CurrentDomain.BaseDirectory + String.Format("{0}.xlsx", date.ToString("MMdd"));
 
@@ -182,7 +195,7 @@ namespace BalanceCompute
                 int j = 1;
 
                 ws.Cell(i, j++).SetValue("門市");
-                ws.Cell(i, j++).SetValue(string.Format("{0}餘額", date.AddDays(-1).ToString("MM/dd")));
+                ws.Cell(i, j++).SetValue(title);
                 ws.Cell(i, j++).SetValue(string.Format("{0}現金收入", date.ToString("MM/dd")));             
                 ws.Cell(i, j++).SetValue(string.Format("{0}餘額", date.ToString("MM/dd")));
 
